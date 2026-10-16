@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WAMA - منهجية العمل (تشغيل حي)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--ink:#22252e;--ln:#7b8394;--card:#fff;--red:#c0392b;--blu:#2455a6;--grn:#2a8a4a;--org:#d9822b;--soft:#f1f3f8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root:not([data-theme=light]){color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15171c;--ink:#e8eaf0;--ln:#8a93a6;--card:#1c1f26;--soft:#262a33}}
+:root[data-theme=dark]{--bg:#15171c;--ink:#e8eaf0;--ln:#8a93a6;--card:#1c1f26;--soft:#262a33}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Cairo,Tahoma,Arial,sans-serif;padding:10px;line-height:1.5}
+h1{margin:4px 0;font-size:22px;text-align:center}h2{margin:0 0 6px;font-size:15px}
+.sub{text-align:center;font-size:12px;color:var(--ln);margin-bottom:8px}
+.bx{border:2px solid var(--ink);border-radius:14px 4px 12px 5px/5px 12px 4px 14px;padding:10px;background:var(--card);margin-bottom:10px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;font-size:12px;margin-bottom:10px}
+.ch{border:2px solid var(--ink);border-radius:10px 3px 9px 4px;padding:3px 8px;background:var(--card);transition:.2s}
+.ch.on{background:var(--blu);color:#fff}
+button,select{font:inherit;font-size:13px;border:2px solid var(--ink);border-radius:9px 3px 8px 4px;background:var(--card);color:var(--ink);padding:4px 9px;cursor:pointer}
+button.sel{background:var(--ink);color:var(--bg)}button:disabled{opacity:.4}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}
+canvas{width:100%;height:auto;border:1px dashed var(--ln);border-radius:4px;background:var(--bg)}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-bottom:1px dashed var(--ln);padding:3px 4px;text-align:right}
+.v{font-weight:700;font-variant-numeric:tabular-nums}
+.zone{display:inline-block;padding:1px 10px;border-radius:8px;color:#fff;font-weight:700}
+.bar{height:9px;background:var(--soft);border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;background:var(--blu);width:0;transition:.4s}
+#chat{height:190px;overflow:auto;background:var(--soft);border-radius:6px;padding:6px;font-size:13px}
+.m{margin:4px 0;padding:4px 8px;border-radius:8px;max-width:90%}.u{background:var(--blu);color:#fff;margin-right:0;margin-left:auto}.a{background:var(--card);border:1px solid var(--ln)}
+.m small{display:block;color:var(--ln);font-size:11px}
+input[type=text]{flex:1;min-width:120px;font:inherit;font-size:13px;border:2px solid var(--ink);border-radius:8px;padding:4px 8px;background:var(--card);color:var(--ink)}
+.alert{background:var(--red);color:#fff;border-radius:8px;padding:6px 10px;font-weight:700;margin:6px 0;display:none}
+.spin{animation:sp 1s linear infinite;transform-origin:center;transform-box:fill-box}.stop{animation:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+details{margin-bottom:8px}summary{cursor:pointer;font-weight:700}
+li{margin:2px 0;font-size:13px}.ok{color:var(--grn)}.bad{color:var(--red)}
+</style></head><body>
+<h1>WAMA — منهجية العمل شغّالة</h1>
+<div class="sub">محاكاة حية للمراحل الأربع: استشعار ← ESP32 ← Raspberry Pi 5 ← BMS والمساعد الصوتي</div>
+
+<div class="bx"><h2>🎛 لوحة حقن الأعطال (بدل المحرك الحقيقي)</h2>
+<div class="row" id="fb"></div>
+<div class="row"><label>شدة العطل: <b id="sv">50%</b></label><input type="range" id="sev" min="0" max="100" value="50" style="flex:1;min-width:140px"></div>
+<div class="row"><label><input type="checkbox" id="nz"> ضوضاء صناعية</label><label><input type="checkbox" id="au" checked> فصل وقائي تلقائي</label><label><input type="checkbox" id="vo"> نطق الإجابات</label></div>
+<div class="alert" id="al"></div></div>
+
+<div class="flow"><span class="ch" id="c1">1 المحرك والمستشعرات</span>➔<span class="ch" id="c2">2 ESP32 ×2</span><small>Serial/USB</small>➔<span class="ch" id="c3">3 Raspberry Pi 5</span>➔<span class="ch" id="c4">4 BMS + Voice</span><small>Modbus</small></div>
+
+<div class="g">
+<div class="bx"><h2>1) الاستشعار — Data Acquisition</h2>
+<table id="t1"></table></div>
+<div class="bx"><h2>2) عقدتا ESP32</h2>
+<table id="t2"></table><div class="sub" style="text-align:right">عينات 512 Hz × 512 عينة / ثانية، تحويل أولي ثم إرسال.</div></div>
+</div>
+
+<div class="bx"><h2>3) Raspberry Pi 5 — FFT + ISO 10816 + تصنيف الأعطال</h2>
+<div class="row"><button id="tv" class="sel">طيف الاهتزاز</button><button id="tc">طيف التيار (MCSA)</button></div>
+<canvas id="sp" width="640" height="220"></canvas>
+<div class="g" style="margin-top:8px">
+<div><b>شدة الاهتزاز RMS:</b> <span class="v" id="rms"></span> مم/ث &nbsp;<span class="zone" id="zn"></span><div class="sub" style="text-align:right">A&lt;0.71 · B&lt;1.8 · C&lt;4.5 · D خطر</div><canvas id="hs" width="400" height="110"></canvas></div>
+<div><b>نتيجة التصنيف (ML):</b><div id="cls"></div></div></div></div>
+
+<div class="g">
+<div class="bx"><h2>4) HMI + Modbus → BMS/SCADA</h2><table id="t4"></table></div>
+<div class="bx"><h2>مسار القدرة والحماية</h2><svg id="pw" viewBox="0 0 330 130" width="100%"></svg>
+<div id="loto" style="display:none"><b>LOTO — أكمل الخطوات قبل الإصلاح:</b><div id="lk"></div><button id="rs" disabled>تم الإصلاح — إعادة التشغيل</button></div></div>
+</div>
+
+<div class="bx"><h2>🎤 WAMA Voice Copilot (STT ← RAG ← TTS)</h2>
+<div id="chat"></div>
+<div class="row" id="chips"></div>
+<div class="row"><input type="text" id="q" placeholder="اسأل: إيه العطل؟ أعمل إيه؟ الحرارة كام؟"><button id="go">إرسال</button><button id="mic">🎙</button></div></div>
+
+<div class="bx"><h2>✅ مؤشرات التحقق (حية)</h2><table id="kp"></table></div>
+
+<details class="bx" open><summary>منهجية العمل (4 مراحل)</summary><ol>
+<li><b>الاستشعار:</b> ADXL345 اهتزاز، INMP441 صوت، SCT-013 تيار لتحليل MCSA، DS18B20 حرارة، ويوزّعها ESP32 على عقدتين لعينات سريعة بدون تأخير.</li>
+<li><b>المعالجة والذكاء الاصطناعي:</b> نقل Serial/USB إلى Raspberry Pi 5، FFT واستخراج السمات ومقارنتها بـ ISO 10816، وتصنيف الأعطال (كراسي، عدم محاذاة، قضبان العضو).</li>
+<li><b>التفاعل الصوتي:</b> STT لأسئلة المشغل، RAG على كتالوجات المحرك، وTTS لإرشادات خطوة بخطوة تشمل LOTO.</li>
+<li><b>التكامل والتحكم:</b> Modbus RTU/TCP لمشاركة الطاقة والجهد والحرارة، HMI وداشبورد، وفصل وقائي بالقواطع والمرحلات عند النطاق الحرج.</li></ol></details>
+<details class="bx"><summary>المخرجات الملموسة</summary><ul><li>نموذج اختباري صناعي (محرك 3 أوجه + MCC)</li><li>شاشة HMI 7 بوصة + شاشة داشبورد مركزية</li><li>WAMA Voice Copilot</li><li>حزمة برمجية: C++ لـ ESP32 وPython للمعالجة وسيرفر BMS</li><li>ملف حصر وتسعير BOM (77 بنداً)</li></ul></details>
+<details class="bx"><summary>العوائد والأثر</summary><ul><li><b>تشغيلية:</b> منع الانهيارات المفاجئة للمحركات.</li><li><b>اقتصادية:</b> تقليل تكاليف الصيانة والطاقة.</li><li><b>بشرية:</b> دعم صوتي فوري للفنيين المبتدئين.</li><li><b>سلامة:</b> تطبيق LOTO قبل الإصلاح.</li></ul></details>
+<div class="sub">⚠ الإشارات هنا محاكاة برمجية (FFT حقيقي على إشارات مولّدة)، وليست قراءات من محرك فعلي.</div>
+
+<script>
+const $=i=>document.getElementById(i);
+const F={normal:'سليم',bearing:'تآكل كراسي التحميل',mis:'عدم المحاذاة',rotor:'خلل قضبان العضو الدوار'};
+const S={f:'normal',sev:.5,trip:false,tick:0,ok:0,tot:0,hist:[],T:48,tab:'v',zone:'A',last:{},lat:[],lt:performance.now(),dts:[]};
+const N=512,CS=[],SN=[];for(let i=0;i<N;i++){CS.push(Math.cos(2*Math.PI*i/N));SN.push(Math.sin(2*Math.PI*i/N))}
+// UI build
+$('fb').innerHTML=Object.keys(F).map(k=>`<button data-f="${k}" class="${k=='normal'?'sel':''}">${F[k]}</button>`).join('');
+$('fb').onclick=e=>{const k=e.target.dataset.f;if(!k||S.trip)return;S.f=k;[...$('fb').children].forEach(b=>b.classList.toggle('sel',b.dataset.f==k));tick()};
+$('sev').oninput=e=>{S.sev=e.target.value/100;$('sv').textContent=e.target.value+'%'};
+$('tv').onclick=()=>{S.tab='v';$('tv').classList.add('sel');$('tc').classList.remove('sel');draw()};
+$('tc').onclick=()=>{S.tab='c';$('tc').classList.add('sel');$('tv').classList.remove('sel');draw()};
+const LK=['إيقاف المحرك','فصل القاطع MCCB','تركيب قفل وبطاقة','قياس انعدام الجهد','فحص الجزء المعطوب'];
+$('lk').innerHTML=LK.map((t,i)=>`<label style="display:block"><input type="checkbox" class="lc"> ${t}</label>`).join('');
+$('lk').onchange=()=>{$('rs').disabled=![...document.querySelectorAll('.lc')].every(c=>c.checked)};
+$('rs').onclick=()=>{S.trip=false;S.f='normal';[...$('fb').children].forEach(b=>b.classList.toggle('sel',b.dataset.f=='normal'));document.querySelectorAll('.lc').forEach(c=>c.checked=false);$('rs').disabled=true;$('loto').style.display='none';$('al').style.display='none';say('تم تنفيذ LOTO وإعادة التشغيل. المحرك سليم.')};
+// signal model
+function par(){const s=S.trip||S.f=='normal'?0:S.sev;let a1=.35,a2=.1,B=.12,sb=0;
+ if(S.f=='bearing')B=.12+s*6.5;if(S.f=='mis'){a2=.1+s*7;a1=.35+s*2}if(S.f=='rotor'){a1=.35+s*3.5;sb=s*.12}
+ if(S.trip)a1=a2=B=sb=0;return{a1,a2,B,sb,s}}
+function gen(p){const v=[],c=[],ph=Math.random()*6.28,nz=S.trip?.02:($('nz').checked?.25:.06),g=()=>(Math.random()+Math.random()+Math.random()-1.5)*1.8;
+ for(let n=0;n<N;n++){const w=2*Math.PI*n/N;
+  v.push(p.a1*Math.sin(25*w+ph)+p.a2*Math.sin(50*w+ph*2)+p.B*(Math.sin(76*w+ph*3)+.6*Math.sin(152*w+1)+.5*Math.sin(228*w+2))+nz*g());
+  c.push(S.trip?0:Math.sin(50*w+ph)+p.sb*(Math.sin(46*w+ph)+Math.sin(54*w+ph*1.3))+.002*g())}return[v,c]}
+function dft(x,K){const w=x.map((_,n)=>.5-.5*Math.cos(2*Math.PI*n/N)),ws=w.reduce((a,b)=>a+b,0),o=[];
+ for(let k=0;k<K;k++){let re=0,im=0;for(let n=0;n<N;n++){const i=(k*n)%N,y=x[n]*w[n];re+=y*CS[i];im-=y*SN[i]}o.push(2*Math.hypot(re,im)/ws)}return o}
+const pk=(a,k)=>Math.max(a[k-1],a[k],a[k+1]);
+const CEN={normal:[.35,.1,.32,0],bearing:[.35,.1,8.4,0],mis:[1.55,4.3,.32,0],rotor:[2.45,.1,.32,.72]},SC=[1,2,3,.3];
+function classify(f){const d=Object.keys(CEN).map(k=>[k,Math.sqrt(CEN[k].reduce((s,c,i)=>s+((f[i]-c)/SC[i])**2,0))]);
+ const e=d.map(([k,x])=>[k,Math.exp(-x*1.3)]),t=e.reduce((s,x)=>s+x[1],0);return e.map(([k,x])=>[k,x/t]).sort((a,b)=>b[1]-a[1])}
+const zn=r=>r<.71?'A':r<1.8?'B':r<4.5?'C':'D',ZC={A:'#2a8a4a',B:'#7fa22a',C:'#d9822b',D:'#c0392b'},ZT={A:'جيد',B:'مقبول',C:'غير مرضٍ',D:'خطر'};
+// main loop
+function tick(){const now=performance.now();S.dts.push(now-S.lt);S.lt=now;S.dts=S.dts.slice(-8);
+ ['c1','c2','c3','c4'].forEach((c,i)=>setTimeout(()=>{$(c).classList.add('on');setTimeout(()=>$(c).classList.remove('on'),180)},i*140));
+ const p=par(),[v,c]=gen(p),A=dft(v,256),C=dft(c,64);S.A=A;S.C=C;
+ const a1=pk(A,25),a2=pk(A,50),b=pk(A,76)+pk(A,152)+pk(A,228),sbr=S.trip?0:(pk(C,46)+pk(C,54))/2/pk(C,50);
+ const rms=Math.sqrt(A.slice(3).reduce((s,x)=>s+x*x/2,0)),z=zn(rms),cl=classify([a1,a2,b,sbr*10]);
+ const tg={bearing:28,mis:14,rotor:18,normal:0}[S.f]*p.s;S.T+=((S.trip?30:48+tg)-S.T)*.3;
+ const I=S.trip?0:3.4+(S.f=='mis'?.3:S.f=='rotor'?.6:0)*p.s+Math.random()*.03,kW=Math.sqrt(3)*400*I*.85/1000,dB=S.trip?40:62+(S.f=='bearing'?14*p.s:0)+(S.f=='mis'?5*p.s:0)+($('nz').checked?10:0);
+ const pred=cl[0][0];if(!S.trip&&(S.f=='normal'||S.sev>=.3)){S.tot++;if(pred==S.f)S.ok++}
+ S.hist.push(rms);S.hist=S.hist.slice(-60);
+ const old=S.zone;S.zone=z;S.last={rms,z,I,kW,T:S.T,dB,cl,a1,a2,b,sbr};
+ // tables
+ const r=(a,b)=>`<tr><td>${a}</td><td class="v">${b}</td></tr>`;
+ $('t1').innerHTML=r('ADXL345 اهتزاز',rms.toFixed(2)+' مم/ث')+r('INMP441 صوت',dB.toFixed(0)+' dB')+r('SCT-013 تيار',I.toFixed(2)+' A')+r('DS18B20 حرارة',S.T.toFixed(1)+' °C');
+ $('t2').innerHTML=r('ESP32 #1 (اهتزاز + صوت)',S.trip?'خامل':'يعمل ✔')+r('ESP32 #2 (تيار + حرارة)',S.trip?'خامل':'يعمل ✔')+r('الحزم المرسلة',++S.tick*2)+r('معدل التحديث',(S.dts.reduce((a,b)=>a+b,0)/S.dts.length/1000).toFixed(2)+' ث');
+ $('rms').textContent=rms.toFixed(2);$('zn').textContent=z+' — '+ZT[z];$('zn').style.background=ZC[z];
+ $('cls').innerHTML=cl.map(([k,x])=>`<div style="font-size:12px">${F[k]} <b>${(x*100).toFixed(0)}%</b></div><div class="bar"><i style="width:${x*100}%;background:${k=='normal'?'var(--grn)':'var(--red)'}"></i></div>`).join('');
+ $('t4').innerHTML=r('الحالة',S.trip?'<span class="bad">فصل وقائي ✖</span>':'<span class="ok">تشغيل ✔</span>')+r('Modbus 40001 اهتزاز×100',Math.round(rms*100))+r('40002 حرارة×10',Math.round(S.T*10))+r('40003 تيار×100',Math.round(I*100))+r('40004 قدرة×100 (kW)',Math.round(kW*100))+r('40005 جهد (V)',S.trip?0:(398+Math.random()*4).toFixed(0))+r('40006 كود العطل',Object.keys(F).indexOf(pred));
+ draw();power();kpi();
+ if(z=='D'&&$('au').checked&&!S.trip){S.trip=true;$('loto').style.display='block';$('al').style.display='block';$('al').textContent='⚠ فصل وقائي: وصلت الشدة للنطاق D — القاطع فُتح، نفّذ LOTO';say(`تنبيه خطر. تم الفصل الوقائي بسبب ${F[pred]}. نفّذ إجراءات LOTO قبل أي إصلاح.`,true)}
+ else if(z!=old&&(z=='C')&&!S.trip)say(`تنبيه: الاهتزاز دخل النطاق C. التشخيص المرجّح ${F[pred]}.`,true)}
+function draw(){const cv=$('sp'),x=cv.getContext('2d'),W=cv.width,H=cv.height,ink=getComputedStyle(document.body).color;x.clearRect(0,0,W,H);if(!S.A)return;
+ x.strokeStyle=ink;x.fillStyle=ink;x.font='13px Cairo,Tahoma';x.lineWidth=1;x.globalAlpha=.5;x.beginPath();x.moveTo(30,H-22);x.lineTo(W-5,H-22);x.stroke();x.globalAlpha=1;
+ const v=S.tab=='v',a=v?S.A:S.C,K=a.length,bw=(W-40)/K,mx=v?Math.max(6,...a):1,ref=Math.max(...a.slice(48,53));
+ for(let k=1;k<K;k++){let h=v?a[k]/mx:Math.max(0,(20*Math.log10(Math.max(a[k],1e-6)/ref)+70)/70);h*=H-50;x.fillStyle=v?'#2455a6':'#2a8a4a';x.fillRect(32+k*bw,H-22-h,Math.max(1,bw-.5),h)}
+ x.fillStyle=ink;const L=v?[[25,'1x'],[50,'2x'],[76,'BPFO'],[152,''],[228,'']]:[[46,'46Hz'],[50,'50Hz'],[54,'54Hz']];
+ L.forEach(([k,t])=>{x.fillText(t,32+k*bw-8,H-6)});x.fillText(v?'سرعة (مم/ث) مقابل التردد 0-256 Hz':'dB مقابل التردد 0-64 Hz',34,14);
+ const h=$('hs').getContext('2d'),w=400,hh=110;h.clearRect(0,0,w,hh);[.71,1.8,4.5].forEach((t,i)=>{const y=hh-t/6*hh;h.strokeStyle=['#2a8a4a','#d9822b','#c0392b'][i];h.setLineDash([4,4]);h.beginPath();h.moveTo(0,y);h.lineTo(w,y);h.stroke()});
+ h.setLineDash([]);h.strokeStyle=ink;h.lineWidth=2;h.beginPath();S.hist.forEach((r,i)=>{const X=i/59*w,Y=hh-Math.min(r,6)/6*hh;i?h.lineTo(X,Y):h.moveTo(X,Y)});h.stroke()}
+function power(){const t=S.trip,c=t?'#8a93a6':'#c0392b',bx=(x,n)=>`<rect x="${x}" y="30" width="56" height="44" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><text x="${x+28}" y="56" font-size="10" text-anchor="middle" fill="currentColor">${n}</text>`;
+ $('pw').innerHTML=`<g color="var(--ink)"><line x1="4" y1="52" x2="320" y2="52" stroke="${c}" stroke-width="3"/>${bx(10,'MCC')}${bx(75,'MCCB')}${bx(140,'Contactor')}${bx(205,'Relay')}
+ ${t?'<line x1="92" y1="30" x2="110" y2="8" stroke="#c0392b" stroke-width="4"/><text x="120" y="14" font-size="10" fill="#c0392b">مفتوح</text>':''}
+ <circle cx="290" cy="52" r="22" fill="var(--soft)" stroke="currentColor" stroke-width="2"/><g class="${t?'spin stop':'spin'}" style="animation-duration:${t?1:.5}s"><line x1="290" y1="36" x2="290" y2="68" stroke="currentColor" stroke-width="2"/><line x1="274" y1="52" x2="306" y2="52" stroke="currentColor" stroke-width="2"/></g>
+ <text x="165" y="115" font-size="11" text-anchor="middle" fill="currentColor">${t?'المحرك متوقف — دائرة القدرة مفصولة':'3Ø 400V — المحرك يعمل 2HP'}</text></g>`}
+function kpi(){const acc=S.tot?S.ok/S.tot*100:0,r=(a,b,c)=>`<tr><td>${a}</td><td>${b}</td><td class="v ${c?'ok':'bad'}">${c?'✔':'…'}</td></tr>`,la=S.lat.length?S.lat.reduce((a,b)=>a+b,0)/S.lat.length:0,dt=S.dts.reduce((a,b)=>a+b,0)/S.dts.length/1000;
+ $('kp').innerHTML=`<tr><th>المؤشر</th><th>القيمة الحالية (الهدف)</th><th></th></tr>`+r('دقة تصنيف الأعطال',acc.toFixed(0)+'% (≥90%)',acc>=90&&S.tot>5)+r('زمن الاستجابة الصوتية',(la?la.toFixed(2):'—')+' ث (<3)',la>0&&la<3)+r('معدل تحديث البيانات',dt.toFixed(2)+' ث (≈1)',dt<1.2)+r('الفصل الوقائي',S.trip?'تم عند النطاق D':'جاهز (100%)',true)+r('فهم الأوامر الصوتية (محاكاة)',($('nz').checked?'88%':'96%')+' (>85%)',true)}
+// voice
+const ST={bearing:['نفّذ LOTO أولاً','افتح الغطاء وافحص كرسي التحميل','غيّر الكرسي وراجع التشحيم','أعد التشغيل وتأكد أن الاهتزاز أقل من 1.8 مم/ث'],mis:['نفّذ LOTO أولاً','افحص محاذاة الكوبلنج بساعة قياس أو ليزر','اضبط القواعد واربط الجلب','أعد القياس بعد التشغيل'],rotor:['نفّذ LOTO أولاً','أعد تحليل MCSA بحمل لا يقل عن 75%','لو الكسر مؤكد خطّط لاستبدال العضو الدوار','قلّل الحمل لحد الإصلاح']};
+function ans(q){const L=S.last,top=L.cl[0][0];
+ if(/لوتو|loto|عزل|امان|أمان|سلام/i.test(q))return['خطوات LOTO: أوقف المحرك، افصل القاطع، ركّب القفل والبطاقة، تأكد من انعدام الجهد، ثم ابدأ الإصلاح.','إجراءات السلامة §1'];
+ if(/حرار|سخون/.test(q))return[`حرارة المحرك ${L.T.toFixed(0)} درجة، والحد الآمن 80.`,'DS18B20'];
+ if(/تيار|امبير|أمبير|طاق|قدر/.test(q))return[`التيار ${L.I.toFixed(1)} أمبير والقدرة ${L.kW.toFixed(2)} كيلوواط.`,'SCT-013 / Modbus'];
+ if(/اعمل|أعمل|اصلح|إصلاح|حل|خطوات|اتصرف/.test(q))return top=='normal'?['المحرك سليم ولا يوجد إجراء مطلوب.','كتيب الصيانة §2']:['خطوات الإصلاح: '+ST[top].map((s,i)=>`${i+1}) ${s}`).join('، ')+'.','كتالوج المحرك §'+(top=='bearing'?4:top=='mis'?5:6)];
+ if(/عطل|مشكل|حال|ايه|إيه|شدة|اهتزاز/.test(q))return[top=='normal'?`الحالة سليمة، الاهتزاز ${L.rms.toFixed(2)} مم/ث (نطاق ${L.z}).`:`التشخيص المرجّح: ${F[top]} بثقة ${(L.cl[0][1]*100).toFixed(0)}%، الاهتزاز ${L.rms.toFixed(2)} مم/ث (نطاق ${L.z}).`,'ISO 10816 + نموذج التصنيف'];
+ return['اسألني عن العطل أو الحرارة أو التيار أو خطوات الإصلاح أو LOTO.','—']}
+function add(c,t,s){const d=document.createElement('div');d.className='m '+c;d.innerHTML=t+(s?`<small>${s}</small>`:'');$('chat').appendChild(d);$('chat').scrollTop=1e9}
+function say(t,pro){add('a','🔊 '+t,pro?'تنبيه استباقي':'');if($('vo').checked&&window.speechSynthesis){const u=new SpeechSynthesisUtterance(t);u.lang='ar-EG';speechSynthesis.speak(u)}}
+function ask(q){if(!q.trim())return;add('u',q);const t0=performance.now();setTimeout(()=>{const[a,s]=ans(q),lat=(performance.now()-t0)/1000;S.lat.push(lat);S.lat=S.lat.slice(-10);
+ add('a','🔊 '+a,`المصدر: ${s} · زمن الاستجابة ${lat.toFixed(2)} ث`);if($('vo').checked&&window.speechSynthesis){const u=new SpeechSynthesisUtterance(a);u.lang='ar-EG';speechSynthesis.speak(u)}kpi()},700+Math.random()*700)}
+$('chips').innerHTML=['إيه العطل؟','أعمل إيه؟','خطوات LOTO','الحرارة كام؟','التيار كام؟'].map(t=>`<button>${t}</button>`).join('');
+$('chips').onclick=e=>{if(e.target.tagName=='BUTTON')ask(e.target.textContent)};
+$('go').onclick=()=>{ask($('q').value);$('q').value=''};$('q').onkeydown=e=>{if(e.key=='Enter')$('go').click()};
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+$('mic').onclick=()=>{if(!SR){add('a','المتصفح لا يدعم التعرف على الصوت، اكتب سؤالك.');return}const r=new SR();r.lang='ar-EG';r.onresult=e=>ask(e.results[0][0].transcript);r.start()};
+add('a','أنا WAMA Voice Copilot. اسأل عن العطل أو الإصلاح أو LOTO.');
+tick();setInterval(tick,1000);
+</script></body></html>
